@@ -30,7 +30,7 @@ export function createStore(storage = null) {
     record({ lesson, solved, firstTry, hintsUsed, errorCodes, bridge }) {
       data.records.push({ lesson, solved, firstTry, hintsUsed, errorCodes: [...errorCodes], bridge, at: new Date().toISOString().slice(0, 10) });
       data.records = data.records.slice(-300);
-      if (solved) { data.xp += firstTry ? 12 : 8; data.coins += firstTry ? 4 : 3; }
+      if (solved) { data.xp += 10; data.coins += 3; }
       for (const code of errorCodes) {
         if (code === 'other') continue;
         const key = `${lesson}:${code}`;
