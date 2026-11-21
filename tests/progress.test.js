@@ -8,7 +8,7 @@ test('Lernfortschritt bleibt beim Neuladen im gleichen Browser erhalten', () => 
   const a = createStore(storage);
   a.record({ lesson:'verteilen', solved:true, firstTry:true, hintsUsed:false, errorCodes:new Set(), bridge:false });
   const b = createStore(storage);
-  assert.equal(b.data.xp, 12);
+  assert.equal(b.data.xp, 10);
   assert.equal(b.lessonStats('verteilen').practiced, 1);
 });
 test('wiederkehrende Fehler zählen einmal pro Aufgabe', () => {
@@ -21,4 +21,12 @@ test('Sicherung ist lesbar und kann importiert werden', () => {
   const a = createStore(memory()); a.record({ lesson:'rest', solved:true, firstTry:true, hintsUsed:false, errorCodes:new Set(), bridge:false });
   const b = createStore(memory()); b.import(a.export());
   assert.equal(b.lessonStats('rest').practiced, 1);
+});
+
+test('Tippnutzung und Fehler führen nicht zu weniger Belohnung', () => {
+  const store = createStore(memory());
+  store.record({ lesson:'verteilen', solved:true, firstTry:true, hintsUsed:false, errorCodes:new Set(), bridge:false });
+  store.record({ lesson:'verteilen', solved:true, firstTry:false, hintsUsed:true, errorCodes:new Set(['other']), bridge:false });
+  assert.equal(store.data.xp, 20);
+  assert.equal(store.data.coins, 6);
 });
