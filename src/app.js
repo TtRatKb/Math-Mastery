@@ -1,5 +1,5 @@
-import { COURSE, FEEDBACK, ERROR_LABELS } from './content.js';
-import { createQuestion, gradeAnswer, explainSolution } from './math.js';
+import { COURSE, FEEDBACK, ERROR_LABELS, PRACTICE_TIPS } from './content.js';
+import { createQuestion, gradeAnswer, explainSolution, guidedHint, guidedErrorHelp } from './math.js';
 import { createStore } from './progress.js';
 
 const app = document.querySelector('#app');
@@ -7,7 +7,7 @@ const store = createStore();
 const $ = (selector) => app.querySelector(selector);
 const safe = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const lessonById = (id) => COURSE.lessons.find((l) => l.id === id);
-const state = { page: 'home', lesson: null, session: null, question: null, tries: 0, errors: new Set(), hint: false, answered: false, bridgePending: false, message: '', feedback: null };
+const state = { page: 'home', lesson: null, session: null, question: null, tries: 0, errors: new Set(), hint: false, hintUsed: false, answered: false, bridgePending: false, message: '', feedback: null };
 const companions = [
   { id: 'fox', name: 'Fuchs', cost: 0 },
   { id: 'owl', name: 'Eule', cost: 35 },
@@ -79,6 +79,7 @@ function nextQuestion() {
   state.tries = 0;
   state.errors = new Set();
   state.hint = false;
+  state.hintUsed = false;
   state.answered = false;
   state.feedback = null;
   renderQuestion();
@@ -92,7 +93,7 @@ function prompt(q) {
 function renderQuestion() {
   const l = lessonById(state.lesson), q = state.question;
   const pct = state.session.done * 100 / l.count;
-  app.innerHTML = `${banner()}<section class="exercise"><div class="exercise-top"><div><p class="eyebrow">ETAPPE ${l.number} · ${safe(l.name)}</p><h1>Aufgabe ${state.session.done + 1} <span>von ${l.count}</span></h1></div><button class="back-link" data-go="home">Für heute fertig</button></div><div class="meter" role="progressbar" aria-valuenow="${state.session.done}" aria-valuemin="0" aria-valuemax="${l.count}"><div style="width:${pct}%"></div></div><div class="exercise-card"><div class="exercise-marker">${q.bridge ? 'EIN SCHRITT ZURÜCK – MIT LEICHTEREN ZAHLEN' : 'JETZT BIST DU DRAN'}</div><h2 class="prompt">${safe(prompt(q))}</h2>${q.kind === 'share' ? `<div class="count-line" aria-label="${q.total} Punkte">${Array.from({ length: q.total }, () => '<i class="pebble" aria-hidden="true"></i>').join('')}</div>` : `<div class="math-display">${q.total} <span>:</span> ${q.divisor} <span>=</span> ?</div>`}<p class="input-help">Schreib deine Antwort hier hinein:</p><form id="answer-form" novalidate><div class="answer-area"><label>Ergebnis<input id="quotient" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="?" aria-describedby="feedback"></label>${q.kind === 'remainder' ? '<label>Rest<input id="remainder" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="?" aria-describedby="feedback"></label>' : ''}<button type="submit" id="check" class="button button-primary">Prüfen ${icon('check')}</button></div></form><div id="feedback" role="status" aria-live="polite"></div><div class="exercise-actions"><button class="button button-quiet" data-action="hint">${icon('light')} Tipp ansehen</button><button class="button button-quiet" data-action="solution" style="display:none">Lösung erklären</button></div><div id="hint-panel"></div></div><p class="reassurance">Fehler gehören zum Lernen. Du kannst es in Ruhe noch einmal versuchen.</p></section>`;
+  app.innerHTML = `${banner()}<section class="exercise"><div class="exercise-top"><div><p class="eyebrow">ETAPPE ${l.number} · ${safe(l.name)}</p><h1>Aufgabe ${state.session.done + 1} <span>von ${l.count}</span></h1></div><button class="back-link" data-go="home">Für heute fertig</button></div><div class="meter" role="progressbar" aria-valuenow="${state.session.done}" aria-valuemin="0" aria-valuemax="${l.count}"><div style="width:${pct}%"></div></div><div class="exercise-card"><div class="exercise-marker">${q.bridge ? 'EIN SCHRITT ZURÜCK – MIT LEICHTEREN ZAHLEN' : 'JETZT BIST DU DRAN'}</div><h2 class="prompt">${safe(prompt(q))}</h2>${q.kind === 'share' ? `<div class="count-line" aria-label="${q.total} Punkte">${Array.from({ length: q.total }, () => '<i class="pebble" aria-hidden="true"></i>').join('')}</div>` : `<div class="math-display">${q.kind === 'inverse' ? `${q.divisor} <span>·</span> ? <span>=</span> ${q.total}` : `${q.total} <span>:</span> ${q.divisor} <span>=</span> ?`}</div>`}<p class="input-help">Schreib deine Antwort hier hinein:</p><form id="answer-form" novalidate><div class="answer-area"><label>Ergebnis<input id="quotient" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="?" aria-describedby="feedback"></label>${q.kind === 'remainder' ? '<label>Rest<input id="remainder" class="answer-input" type="text" inputmode="numeric" autocomplete="off" placeholder="?" aria-describedby="feedback"></label>' : ''}<button type="submit" id="check" class="button button-primary">Prüfen ${icon('check')}</button></div></form><div id="feedback" role="status" aria-live="polite"></div><div class="exercise-actions"><button class="button button-quiet" data-action="hint">${icon('light')} Tipp ansehen</button><button class="button button-quiet" data-action="solution" style="display:none">Lösung erklären</button></div><div id="hint-panel"></div></div><p class="reassurance">Fehler gehören zum Lernen. Du kannst es in Ruhe noch einmal versuchen.</p></section>`;
   $('#answer-form').addEventListener('submit', checkAnswer);
   $('#quotient').focus({ preventScroll: true });
 }
@@ -103,17 +104,18 @@ function renderFeedback(text, type = 'info') {
 }
 function toggleHint() {
   state.hint = !state.hint;
+  if (state.hint) state.hintUsed = true;
   const q = state.question;
-  const l = lessonById(state.lesson);
-  const content = state.hint ? `<div class="hint-box"><h3>Ein kleiner Denkanstoß</h3><p>${safe(l.hint)}</p>${q.kind === 'share' ? model(q.divisor, q.quotient, 'Verteile die Punkte gleichmäßig') : `<p class="hint-equation">Denke an: ${q.divisor} · ? = ${q.kind === 'remainder' ? q.total - q.remainder : q.total}</p>`}</div>` : '';
+  const hint = guidedHint(q);
+  const content = state.hint ? `<div class="hint-box"><h3>Ein kleiner Denkanstoß</h3><p>${safe(hint.text)}</p>${hint.model ? model(hint.model.groups, hint.model.perGroup, 'Die erste Runde: je ein Stein') : ''}</div>` : '';
   $('#hint-panel').innerHTML = content;
 }
 function recordQuestion(solved) {
   const l = lessonById(state.lesson);
   const codes = [...state.errors];
-  const firstTry = solved && state.tries === 1 && !state.hint;
+  const firstTry = solved && state.tries === 1;
   const existing = Object.fromEntries(codes.map((code) => [code, store.data.errorCounts[`${l.id}:${code}`] || 0]));
-  store.record({ lesson: l.id, solved, firstTry, hintsUsed: state.hint, errorCodes: codes, bridge: state.question.bridge });
+  store.record({ lesson: l.id, solved, firstTry, hintsUsed: state.hintUsed, errorCodes: codes, bridge: state.question.bridge });
   state.session.results.push({ solved, firstTry });
   for (const code of codes) {
     if (code === 'other') continue;
@@ -137,18 +139,18 @@ function checkAnswer(event) {
   if (state.answered) return;
   const q = state.question;
   const result = gradeAnswer(q, $('#quotient').value, $('#remainder')?.value);
-  if (result.status === 'invalid') { renderFeedback(result.message, 'warning'); $('#quotient').focus(); return; }
+  if (result.status === 'invalid') { renderFeedback(result.message, 'warning'); $(result.field === 'remainder' ? '#remainder' : '#quotient').focus(); return; }
   state.tries++;
   if (result.status === 'correct') {
     const firstTry = recordQuestion(true);
-    renderFeedback(`Richtig! ${explainSolution(q)} ${firstTry ? '+12' : '+8'} Erfahrungspunkte.`, 'success');
+    renderFeedback(`Richtig! ${explainSolution(q)} +10 Erfahrungspunkte.`, 'success');
     lockAndContinue();
     return;
   }
   state.errors.add(result.error);
-  renderFeedback(FEEDBACK[result.error], 'warning');
+  renderFeedback(guidedErrorHelp(q, result.error, $('#quotient').value) || FEEDBACK[result.error], 'warning');
   if (state.tries >= 2) $('.exercise-actions [data-action="solution"]').style.display = '';
-  $('#quotient').select();
+  $(result.error === 'remainder_missing' || result.error === 'remainder_incorrect' ? '#remainder' : '#quotient').select();
 }
 function showSolution() {
   if (state.answered) return;
@@ -193,7 +195,7 @@ function renderFamily() {
   const errors = Object.entries(store.data.errorCounts).filter(([key, n]) => n >= 2 && !key.endsWith(':other'))
     .sort((a, b) => b[1] - a[1]).slice(0, 4).map(([key, n]) => {
       const code = key.substring(key.indexOf(':') + 1);
-      return `<li>${safe(ERROR_LABELS[code] || 'Unsicherheit')} – bei ${n} verschiedenen Aufgaben beobachtet</li>`;
+      return `<li><strong>${safe(ERROR_LABELS[code] || 'Unsicherheit')}</strong> – bei ${n} bearbeiteten Aufgaben beobachtet${PRACTICE_TIPS[code] ? `<p class="parent-tip">Zum Ausprobieren: ${safe(PRACTICE_TIPS[code])}</p>` : ''}</li>`;
     }).join('');
   app.innerHTML = `${banner()}<section class="family-head"><p class="eyebrow">GEMEINSAM ANSCHAUEN</p><h1>Unser Lernstand</h1><p>Diese Übersicht ist auf diesem Gerät gespeichert. Sie ist keine Note und keine Diagnose.</p></section><section class="family-stats"><div><strong>${store.data.records.length}</strong><span>Aufgaben angeschaut</span></div><div><strong>${store.data.records.filter(x => x.solved).length}</strong><span>selbst gelöst</span></div><div><strong>${store.data.xp}</strong><span>Erfahrungspunkte</span></div></section><div class="family-layout"><section class="panel"><h2>Geübte Etappen</h2>${rows}</section><section class="panel"><h2>Was hilft beim Weiterlernen?</h2>${errors ? `<p>Bei mehreren verschiedenen Aufgaben gab es ähnliche Antworten:</p><ul class="error-list">${errors}</ul><p class="muted">Das sind nur Hinweise aus Antwortmustern, keine gesicherten Ursachen.</p>` : '<p>Im Moment sind keine wiederkehrenden Fehlermuster erkennbar. Das ist völlig in Ordnung.</p>'}</section></div><section class="panel export-panel"><h2>Lernstand behalten</h2><p>Der Fortschritt bleibt nur in diesem Browser erhalten. Beim Löschen der Browserdaten kann er verschwinden. Mit einer Sicherungsdatei lässt er sich wiederherstellen.</p><div class="export-actions"><button class="button button-dark" data-action="export">${icon('backup')} Sicherung speichern</button><label class="button button-quiet file-picker">Sicherung laden<input type="file" id="import-file" accept="application/json,.json"></label><button class="button button-quiet danger" data-action="reset">Lernstand löschen</button></div><p class="inline-status" id="family-message" role="status"></p></section>`;
   $('#import-file').addEventListener('change', importProgress);

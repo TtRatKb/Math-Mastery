@@ -30,7 +30,7 @@ export function gradeAnswer(question, rawQuotient, rawRemainder) {
   let rest = null;
   if (question.kind === 'remainder') {
     const parsed = parseWholeNumber(rawRemainder);
-    if (!parsed.valid) return { status: 'invalid', message: 'Trage auch beim Rest eine ganze Zahl ein.' };
+    if (!parsed.valid) return { status: 'invalid', field: 'remainder', message: 'Trage auch beim Rest eine ganze Zahl ein.' };
     rest = parsed.value;
   }
   if (result.value === question.quotient && (question.kind !== 'remainder' || rest === question.remainder)) {
@@ -38,7 +38,7 @@ export function gradeAnswer(question, rawQuotient, rawRemainder) {
   }
   let error = 'other';
   if (question.kind === 'remainder') {
-    if (result.value === question.quotient && rest !== question.remainder) error = 'remainder_missing';
+    if (result.value === question.quotient && rest !== question.remainder) error = rest === 0 ? 'remainder_missing' : 'remainder_incorrect';
     else if (result.value === question.quotient + 1) error = 'round_up';
   } else {
     if (result.value === question.total - question.divisor && result.value !== question.quotient) error = 'subtraction';
@@ -52,4 +52,39 @@ export function explainSolution(q) {
   const check = `${q.divisor} · ${q.quotient} = ${q.divisor * q.quotient}`;
   if (q.kind === 'remainder') return `${check}. Von ${q.total} bleiben ${q.remainder} übrig. Also ${q.total} : ${q.divisor} = ${q.quotient} Rest ${q.remainder}.`;
   return `${check}. Deshalb ist ${q.total} : ${q.divisor} = ${q.quotient}.`;
+}
+
+/** Konkrete Hilfen ohne die aktuelle Lösung vorwegzunehmen. */
+export function guidedHint(q) {
+  if (q.kind === 'share') {
+    return {
+      text: `Beginne mit einer Runde: In jede der ${q.divisor} Schalen legst du genau einen Stein. Danach bleiben ${q.total - q.divisor} Steine zu verteilen. Wiederhole das, bis keine mehr übrig sind.`,
+      model: { groups: q.divisor, perGroup: 1 }
+    };
+  }
+  if (q.kind === 'remainder') {
+    return {
+      text: `Rechne zuerst ${q.divisor} · 1 = ${q.divisor}. Geht noch eine weitere vollständige Runde mit ${q.divisor} Dingen? Stoppe, bevor du zu viele brauchst. Was bleibt dann übrig?`
+    };
+  }
+  const start = q.quotient === 2 ? 1 : 2;
+  return {
+    text: `Suche die passende Malaufgabe. Du weißt schon: ${q.divisor} · ${start} = ${q.divisor * start}. Erhöhe die zweite Zahl schrittweise, bis du ${q.total} erreichst.`
+  };
+}
+
+/** Die vermutete Ursache nie als gesicherte Diagnose ausgeben. */
+export function guidedErrorHelp(q, error, rawAnswer) {
+  const parsed = parseWholeNumber(rawAnswer);
+  const proposed = parsed.valid ? parsed.value : null;
+  if (error === 'off_by_one' && proposed !== null && Number.isSafeInteger(q.divisor * proposed)) {
+    return `Prüfe deine Zahl mit Malnehmen: ${q.divisor} · ${proposed} = ${q.divisor * proposed}. Gesucht sind insgesamt ${q.total}. Was musst du ändern?`;
+  }
+  if (error === 'round_up' && proposed !== null && Number.isSafeInteger(q.divisor * proposed)) {
+    return `Für ${proposed} in jeder Gruppe bräuchtest du ${q.divisor * proposed} Dinge. Vorhanden sind aber nur ${q.total}. Nimm eine vollständige Gruppe weniger und prüfe den Rest.`;
+  }
+  if ((error === 'remainder_missing' || error === 'remainder_incorrect') && proposed !== null) {
+    return `Die Anzahl pro Gruppe passt. Berechne nun: ${q.total} − (${q.divisor} · ${proposed}). Das Ergebnis ist der Rest.`;
+  }
+  return null; // konfigurierbare Standard-Rückmeldung in content.js verwenden
 }
