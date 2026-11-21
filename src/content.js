@@ -34,7 +34,8 @@ export const FEEDBACK = {
   subtraction: 'Du hast die Zahlen möglicherweise voneinander abgezogen. Teilen bedeutet nicht abziehen: Wir suchen gleich große Gruppen.',
   multiplication: 'Das sieht wie eine Malaufgabe aus. Verwende Malnehmen zum Überprüfen, aber gesucht ist die Zahl pro Gruppe.',
   off_by_one: 'Du bist nur eine Zahl entfernt. Überprüfe mit einer Malaufgabe, ob dein Ergebnis genau passt.',
-  remainder_missing: 'Die Zahl der vollständigen Gruppen passt bereits. Prüfe noch, wie viele Dinge übrig bleiben.',
+  remainder_missing: 'Wie viele übrig bleiben, ist noch wichtig. Prüfe den Rest.',
+  remainder_incorrect: 'Die Zahl pro Gruppe stimmt schon. Prüfe noch einmal den Rest.',
   round_up: 'Eine weitere ganze Gruppe würde zu viele Dinge benötigen. Bleib bei den vollständigen Gruppen und zähle den Rest.',
   other: 'Noch nicht ganz. Schau dir die Erklärung an oder probiere es mit einer kleineren Menge.'
 };
@@ -44,6 +45,17 @@ export const ERROR_LABELS = {
   multiplication: 'Multiplizieren statt Teilen',
   off_by_one: 'Ergebnis um eins daneben',
   remainder_missing: 'Rest vergessen',
+  remainder_incorrect: 'Rest falsch berechnet',
   round_up: 'Eine Gruppe zu viel',
   other: 'Weitere Unsicherheit'
+};
+
+/** Hinweise für Familien – keine Diagnose und keine Verpflichtung zum Üben. */
+export const PRACTICE_TIPS = {
+  subtraction: 'Lege 12 Knöpfe in 3 Schalen. Verteile sie reihum, statt Zahlen abzuziehen.',
+  multiplication: 'Übe den Unterschied: 3 · 4 bedeutet zusammenzählen, 12 : 3 bedeutet verteilen.',
+  off_by_one: 'Lass das Ergebnis durch die passende Malaufgabe überprüfen, zum Beispiel 3 · ? = 12.',
+  remainder_missing: 'Verteile 14 Gegenstände auf 3 Teller. Was passt auf die Teller, was bleibt liegen?',
+  remainder_incorrect: 'Prüfe den Rest mit: Gesamtmenge minus vollständig verteilte Dinge.',
+  round_up: 'Frage: Reichen die vorhandenen Dinge wirklich für noch eine ganze Runde?',
 };
