@@ -1,0 +1,8 @@
+{
+  "name": "mathepfad",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Datensparsamer Mathematik-Lernpfad ohne Konto und Backend",
+  "scripts": { "test": "node --test tests/*.test.js" }
+}

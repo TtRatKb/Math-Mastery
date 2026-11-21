@@ -15,7 +15,7 @@ Dann `http://localhost:8000/` im Browser aufrufen. Alternativ eine statische Hos
 
 ## GitHub-Repository
 
-Dieses Projekt wird unter https://github.com/TtRatKb/Math-Mastery entwickelt. Die App besteht aus statischen Dateien. GitHub Pages wird **nicht** automatisch eingeschaltet; Nutzung mit echten Schülerdaten erst nach schulischer Freigabe.
+Der Quellcode wird unter https://github.com/TtRatKb/Math-Mastery gepflegt. Die Lernanwendung ist eine statische Website ohne Backend. GitHub Pages ist absichtlich noch nicht eingeschaltet. Für einen Schulbetrieb mit echten Kindern sind die Schul-IT und der schulische Datenschutzbeauftragte einzubeziehen.
 
 ## Inhalt bearbeiten
 
