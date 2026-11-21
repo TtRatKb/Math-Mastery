@@ -67,8 +67,9 @@ export function guidedHint(q) {
       text: `Rechne zuerst ${q.divisor} · 1 = ${q.divisor}. Geht noch eine weitere vollständige Runde mit ${q.divisor} Dingen? Stoppe, bevor du zu viele brauchst. Was bleibt dann übrig?`
     };
   }
+  const start = q.quotient === 2 ? 1 : 2;
   return {
-    text: `Suche die passende Malaufgabe. Du weißt schon: ${q.divisor} · 2 = ${q.divisor * 2}. Erhöhe die zweite Zahl schrittweise, bis du ${q.total} erreichst.`
+    text: `Suche die passende Malaufgabe. Du weißt schon: ${q.divisor} · ${start} = ${q.divisor * start}. Erhöhe die zweite Zahl schrittweise, bis du ${q.total} erreichst.`
   };
 }
 
@@ -76,8 +77,6 @@ export function guidedHint(q) {
 export function guidedErrorHelp(q, error, rawAnswer) {
   const parsed = parseWholeNumber(rawAnswer);
   const proposed = parsed.valid ? parsed.value : null;
-  if (error === 'subtraction') return 'Das Ergebnis passt zum Abziehen. Vielleicht hast du die Zahlen subtrahiert? Teile die Menge stattdessen in gleich große Gruppen.';
-  if (error === 'multiplication') return 'Das Ergebnis passt zum Multiplizieren. Die Malaufgabe hilft beim Prüfen; beim Teilen suchen wir aber die Zahl pro Gruppe.';
   if (error === 'off_by_one' && proposed !== null && Number.isSafeInteger(q.divisor * proposed)) {
     return `Prüfe deine Zahl mit Malnehmen: ${q.divisor} · ${proposed} = ${q.divisor * proposed}. Gesucht sind insgesamt ${q.total}. Was musst du ändern?`;
   }
@@ -87,5 +86,5 @@ export function guidedErrorHelp(q, error, rawAnswer) {
   if ((error === 'remainder_missing' || error === 'remainder_incorrect') && proposed !== null) {
     return `Die Anzahl pro Gruppe passt. Berechne nun: ${q.total} − (${q.divisor} · ${proposed}). Das Ergebnis ist der Rest.`;
   }
-  return 'Probiere, die passende Malaufgabe zu finden. Wenn du nicht weiterkommst, nutze den Tipp – du musst es nicht sofort wissen.';
+  return null; // konfigurierbare Standard-Rückmeldung in content.js verwenden
 }
