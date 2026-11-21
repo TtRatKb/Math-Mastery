@@ -7,7 +7,7 @@ const store = createStore();
 const $ = (selector) => app.querySelector(selector);
 const safe = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const lessonById = (id) => COURSE.lessons.find((l) => l.id === id);
-const state = { page: 'home', lesson: null, session: null, question: null, tries: 0, errors: new Set(), hint: false, answered: false, bridgePending: false, message: '', feedback: null };
+const state = { page: 'home', lesson: null, session: null, question: null, tries: 0, errors: new Set(), hint: false, hintUsed: false, answered: false, bridgePending: false, message: '', feedback: null };
 const companions = [
   { id: 'fox', name: 'Fuchs', cost: 0 },
   { id: 'owl', name: 'Eule', cost: 35 },
@@ -79,6 +79,7 @@ function nextQuestion() {
   state.tries = 0;
   state.errors = new Set();
   state.hint = false;
+  state.hintUsed = false;
   state.answered = false;
   state.feedback = null;
   renderQuestion();
@@ -103,6 +104,7 @@ function renderFeedback(text, type = 'info') {
 }
 function toggleHint() {
   state.hint = !state.hint;
+  if (state.hint) state.hintUsed = true;
   const q = state.question;
   const hint = guidedHint(q);
   const content = state.hint ? `<div class="hint-box"><h3>Ein kleiner Denkanstoß</h3><p>${safe(hint.text)}</p>${hint.model ? model(hint.model.groups, hint.model.perGroup, 'Die erste Runde: je ein Stein') : ''}</div>` : '';
@@ -111,9 +113,9 @@ function toggleHint() {
 function recordQuestion(solved) {
   const l = lessonById(state.lesson);
   const codes = [...state.errors];
-  const firstTry = solved && state.tries === 1 && !state.hint;
+  const firstTry = solved && state.tries === 1;
   const existing = Object.fromEntries(codes.map((code) => [code, store.data.errorCounts[`${l.id}:${code}`] || 0]));
-  store.record({ lesson: l.id, solved, firstTry, hintsUsed: state.hint, errorCodes: codes, bridge: state.question.bridge });
+  store.record({ lesson: l.id, solved, firstTry, hintsUsed: state.hintUsed, errorCodes: codes, bridge: state.question.bridge });
   state.session.results.push({ solved, firstTry });
   for (const code of codes) {
     if (code === 'other') continue;
@@ -141,12 +143,12 @@ function checkAnswer(event) {
   state.tries++;
   if (result.status === 'correct') {
     const firstTry = recordQuestion(true);
-    renderFeedback(`Richtig! ${explainSolution(q)} ${firstTry ? '+12' : '+8'} Erfahrungspunkte.`, 'success');
+    renderFeedback(`Richtig! ${explainSolution(q)} +10 Erfahrungspunkte.`, 'success');
     lockAndContinue();
     return;
   }
   state.errors.add(result.error);
-  renderFeedback(guidedErrorHelp(q, result.error, $('#quotient').value), 'warning');
+  renderFeedback(guidedErrorHelp(q, result.error, $('#quotient').value) || FEEDBACK[result.error], 'warning');
   if (state.tries >= 2) $('.exercise-actions [data-action="solution"]').style.display = '';
   $(result.error === 'remainder_missing' || result.error === 'remainder_incorrect' ? '#remainder' : '#quotient').select();
 }
